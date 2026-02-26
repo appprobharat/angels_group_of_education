@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "566605750460",
+    "project_id": "angels-6ead3",
+    "storage_bucket": "angels-6ead3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:566605750460:android:b5496f7b117edbc715f0b9",
+        "android_client_info": {
+          "package_name": "com.angels.apppro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDT1hsHNjjf8qb3MHpxKYGdzeK17cpPOig"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
