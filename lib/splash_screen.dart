@@ -1,5 +1,8 @@
+import 'dart:io';
+import 'package:angels/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:angels/api_service.dart';
+import 'package:in_app_update/in_app_update.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -9,6 +12,44 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() async {
+      await _checkForUpdate();
+    });
+  }
+
+  Future<void> _checkForUpdate() async {
+    try {
+      if (Platform.isAndroid) {
+        final AppUpdateInfo updateInfo = await InAppUpdate.checkForUpdate();
+
+        if (updateInfo.updateAvailability ==
+            UpdateAvailability.updateAvailable) {
+          await InAppUpdate.performImmediateUpdate();
+        }
+      }
+    } catch (e) {
+      debugPrint("In-app update error: $e");
+    }
+
+    _goNext();
+  }
+
+  void _goNext() {
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+
+      // 👇 yahan apna next page lagao
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => LoginPage()),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -9,6 +10,7 @@ import 'login_page.dart';
 class ApiService {
   /// 🔥 CHANGE ONLY HERE
   static const String baseUrl = "https://angelsgroup.apppro.in/api";
+  static const String Url = "https://angelsgroup.apppro.in";
 
   /// ⏱ Timeout (iOS safe)
   static const Duration timeout = Duration(seconds: 20);
@@ -30,6 +32,14 @@ class ApiService {
     }
 
     return prefs.getString('auth_token') ?? '';
+  }
+
+  static Future<Map<String, String>> multipartHeaders() async {
+    final token = await _getToken();
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
+  }
+ static Future<Map<String, String>> headers() async {
+    return await _headers();
   }
 
   // ================= LOGOUT =================
@@ -151,23 +161,90 @@ class ApiService {
       return null;
     }
   }
+ static Future<http.StreamedResponse?> multipartPost(
+    BuildContext context,
+    String endpoint, {
+    Map<String, String>? fields,
+    File? file,
+    String fileKey = 'Attachment',
+  }) async {
+    final token = await _getToken();
 
+    if (token.isEmpty) {
+      await forceLogout(context);
+      return null;
+    }
+
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse("$baseUrl$endpoint"),
+      );
+
+      request.headers.addAll(await multipartHeaders());
+
+      // ✅ FIELDS
+      if (fields != null) {
+        request.fields.addAll(fields);
+      }
+
+      // ✅ FILE
+      if (file != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(fileKey, file.path),
+        );
+      }
+
+      final response = await request.send();
+
+      if (response.statusCode == 401) {
+        await forceLogout(context);
+        return null;
+      }
+
+      return response;
+    } on TimeoutException {
+      debugPrint("⏱ API TIMEOUT: $endpoint");
+
+      return null;
+    } catch (e) {
+      debugPrint("❌ MULTIPART ERROR => $e");
+
+      return null;
+    }
+  }
   // ================= SAVE SESSIONS =================
   static Future<void> saveSession(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 🔐 Token
-    await _secureStorage.write(key: 'auth_token', value: data['token']);
-    await prefs.setString('auth_token', data['token']);
+    // 🔐 TOKEN
+    final String token = data['token'] ?? '';
+    await _secureStorage.write(key: 'auth_token', value: token);
+    await prefs.setString('auth_token', token);
     await prefs.setBool('is_logged_in', true);
 
-    final String userType = data['user_type'] ?? '';
-    final Map<String, dynamic> profile = data['profile'] ?? {};
-
+    // 👤 USER TYPE
+    final String userType = (data['user_type'] ?? '').toString();
     await prefs.setString('user_type', userType);
 
+    // 👤 PROFILE
+    final Map<String, dynamic> profile = Map<String, dynamic>.from(
+      data['profile'] ?? {},
+    );
+
+    // ================= ADMIN =================
+    if (userType.toLowerCase() == 'admin') {
+      await prefs.setString('admin_name', profile['name'] ?? '');
+      await prefs.setString('school_name', profile['school'] ?? '');
+      await prefs.setString('admin_photo', profile['photo'] ?? '');
+
+      debugPrint("🛡 ADMIN LOGIN SAVED");
+      debugPrint("Name: ${profile['name']}");
+      debugPrint("School: ${profile['school']}");
+      debugPrint("Photo: ${profile['photo']}");
+    }
     // ================= TEACHER =================
-    if (userType.toLowerCase() == 'teacher') {
+    else if (userType.toLowerCase() == 'teacher') {
       await prefs.setString('teacher_name', profile['name'] ?? '');
       await prefs.setString('teacher_class', profile['class'] ?? '');
       await prefs.setString('teacher_section', profile['section'] ?? '');
@@ -175,11 +252,6 @@ class ApiService {
       await prefs.setString('teacher_photo', profile['photo'] ?? '');
 
       debugPrint("👨‍🏫 TEACHER LOGIN SAVED");
-      debugPrint("Name: ${profile['name']}");
-      debugPrint("Class: ${profile['class']}");
-      debugPrint("Section: ${profile['section']}");
-      debugPrint("School: ${profile['school']}");
-      debugPrint("Photo: ${profile['photo']}");
     }
     // ================= STUDENT =================
     else if (userType.toLowerCase() == 'student') {
@@ -188,29 +260,33 @@ class ApiService {
       await prefs.setString('section', profile['section'] ?? '');
       await prefs.setString('school_name', profile['school_name'] ?? '');
       await prefs.setString('student_photo', profile['student_photo'] ?? '');
+
+      debugPrint("🎓 STUDENT LOGIN SAVED");
     }
   }
 
   // ================= ATTACHMENTS =================
-  static const siblingUrl = 'https://angels.apppro.in/uploads/no_image.png';
-  static const String s3Base =
-      "https://s3.ap-south-1.amazonaws.com/angels.apppro.in";
+  static const siblingUrl =
+      'https://angelsgroup.apppro.in/uploads/no_image.png';
 
-  static String attachmentUrl(String schoolId, String folder, String file) {
-    return "$s3Base/documents/$schoolId/$folder/$file";
-  }
-
-  static String homeworkAttachment(String fileName) {
-    return "$s3Base/homeworks/$fileName";
-  }
+  
 }
 
 class AppColors {
-  static const primary = Colors.deepOrange;
+  static const primary = Colors.red;
   static const success = Colors.green;
   static const danger = Colors.red;
   static const info = Colors.blue;
   static const designerColor = Colors.orange;
+  static const LinearGradient appBarGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [
+    Color(0xFF991B1B),
+    Color(0xFFDC2626),
+    Color(0xFFEF4444),
+  ],
+);
 }
 
 class AppAssets {
@@ -219,10 +295,9 @@ class AppAssets {
   static const logo_new = 'assets/images/logo_new.png';
 
   static const schoolName = "Angels Public School";
-  // static const schoolDescription =
-  //     "Empowering Students, Inspiring Excellence Transforming Learning, Nurturing Futures.Smart Education for a Smarter Generation.";
+  static const schoolDescription =
+      "Empowering Education, Simplifying Management.";
 
-  static const websiteName = "www.angelpublicschoolfaridabad.com";
-
+  static const websiteName = "www.angelspublicschoolfaridabad.com";
   static const companyWebsite = "https://angelspublicschoolfaridabad.com/";
 }

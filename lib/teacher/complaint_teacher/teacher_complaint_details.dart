@@ -29,7 +29,7 @@ class _TeacherComplaintDetailPageState
   List<dynamic> history = [];
   bool isLoading = true;
 
-
+  final String apiUrl = '${ApiService.Url}/api/teacher/complaint/history';
 
   @override
   void initState() {

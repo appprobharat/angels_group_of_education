@@ -11,14 +11,14 @@ plugins {
 android {
     namespace = "com.angels.apppro"
     compileSdk = 36
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "com.angels.apppro"
         minSdk = flutter.minSdkVersion
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        targetSdk = 36
+        versionCode = 7
+        versionName = "2.0.0"
     }
 
     compileOptions {
